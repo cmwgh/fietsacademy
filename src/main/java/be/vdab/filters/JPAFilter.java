@@ -17,22 +17,28 @@ import javax.servlet.annotation.WebFilter;
 public class JPAFilter implements Filter {
 	private static final EntityManagerFactory entityManagerFactory
 	= Persistence.createEntityManagerFactory("fietsacademy");
+	private static final ThreadLocal<EntityManager> entityManagers = new ThreadLocal<>();
 	@Override
 	public void init(FilterConfig config) throws ServletException {
 		//geen code nodig hier
 	}
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response,
-			FilterChain chain) throws ServletException, IOException {
-		request.setCharacterEncoding("UTF-8");
-		chain.doFilter(request, response);
+	FilterChain chain) throws IOException, ServletException {
+	entityManagers.set(entityManagerFactory.createEntityManager());
+	try {
+	request.setCharacterEncoding("UTF-8");
+	chain.doFilter(request, response);
+	} finally {
+	entityManagers.get().close();
+	entityManagers.remove();
 	}
-	public static EntityManager getEntityManager(){
-		return entityManagerFactory.createEntityManager();
 	}
-	
-	@Override
-	public void destroy() {
-		// TODO Auto-generated method stub
-	}
-}
+	public static EntityManager getEntityManager() {
+		return entityManagers.get();
+		}
+		@Override
+		public void destroy() {
+		entityManagerFactory.close();
+		}
+		}
